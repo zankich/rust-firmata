@@ -91,6 +91,7 @@ pub struct Pin {
    pub  modes: Vec<Mode>,
    pub  analog: bool,
    pub  value: i32,
+   pub  mode: u8,
 }
 
 pub struct Board {
@@ -132,6 +133,9 @@ impl Board {
         b.query_analog_mapping();
         b.decode();
 
+        b.report_digital(0, 1);
+        b.report_digital(1, 1);
+
         return b;
     }
 
@@ -145,6 +149,15 @@ impl Board {
 
     pub fn query_firmware(&mut self) {
         write(&mut *self.sp, &mut [START_SYSEX, REPORT_FIRMWARE, END_SYSEX]).unwrap();
+    }
+
+    pub fn report_digital(&mut self, pin: i32, state: i32) {
+        write(&mut *self.sp,
+            &mut [
+                REPORT_DIGITAL | pin as u8,
+                state as u8
+            ]
+        ).unwrap();
     }
 
     pub fn report_analog(&mut self, pin: i32, state: i32) {
@@ -192,6 +205,7 @@ impl Board {
     }
 
     pub fn set_pin_mode(&mut self, pin: i32, mode: u8) {
+        self.pins[pin as usize].mode = mode;
         write(&mut *self.sp, &mut [PIN_MODE, pin as u8, mode as u8]).unwrap();
     }
 
@@ -203,8 +217,25 @@ impl Board {
             },
             ANALOG_MESSAGE...0xEF => {
                 let value = buf[1] as i32 | ((buf[2] as i32) << 7);
-                let pin = (buf[0] & 0x0F) as usize;
-                self.pins[pin+14usize as usize].value = value;
+                let pin = ((buf[0] as i32) & 0x0F) + 14;
+
+                if self.pins.len() as i32 > pin {
+                    self.pins[pin as usize].value = value;
+                }
+            },
+            DIGITAL_MESSAGE...0x9F => {
+                let port = (buf[0] as i32) & 0x0F;
+                let value = (buf[1] as i32) | ((buf[2] as i32) << 7);
+
+                for i in 0..8 {
+                    let pin = (8 * port) + i;
+
+                    if self.pins.len() as i32 > pin {
+                        if self.pins[pin as usize].mode == INPUT {
+                            self.pins[pin as usize].value = (value >> (i & 0x07)) & 0x01;
+                        }
+                    }
+                }
             },
             START_SYSEX => {
                 loop {
@@ -234,6 +265,7 @@ impl Board {
                             modes: vec![], 
                             analog: false,
                             value: 0,
+                            mode: 0,
                         });
                         while i < buf.len()-1 {
                             if buf[i] == 127u8 {
@@ -242,7 +274,8 @@ impl Board {
                                 self.pins.push(Pin{
                                     modes: vec![], 
                                     analog: false,
-                                    value: 0
+                                    value: 0,
+                                    mode: 0,
                                 });
                                 continue;
                             }
