@@ -1,6 +1,6 @@
 #rust-firmata
 
-Control your [firmata](https://github.com/firmata/protocol) powered device!
+Control your [firmata](https://github.com/firmata/protocol) powered device with rust!
 
 Getting Started
 ---
