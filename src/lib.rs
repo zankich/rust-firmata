@@ -90,7 +90,7 @@ pub struct Mode {
 pub struct Pin {
    pub  modes: Vec<Mode>,
    pub  analog: bool,
-   pub  value: u8,
+   pub  value: i32,
 }
 
 pub struct Board {
@@ -147,8 +147,17 @@ impl Board {
         write(&mut *self.sp, &mut [START_SYSEX, REPORT_FIRMWARE, END_SYSEX]).unwrap();
     }
 
+    pub fn report_analog(&mut self, pin: i32, state: i32) {
+        write(&mut *self.sp,
+            &mut [
+                REPORT_ANALOG | pin as u8,
+                state as u8
+            ]
+        ).unwrap();
+    }
+
     pub fn analog_write(&mut self, pin: i32, level: i32) {
-        self.pins[pin as usize].value = level as u8;
+        self.pins[pin as usize].value = level;
 
         write(&mut *self.sp,
             &mut [
@@ -164,7 +173,7 @@ impl Board {
         let mut value = 0i32;
         let mut i = 0;
 
-        self.pins[pin as usize].value = level as u8;
+        self.pins[pin as usize].value = level;
 
         while i < 8 {
             if self.pins[8*port+i].value != 0 {
@@ -191,6 +200,11 @@ impl Board {
         match buf[0] {
             PROTOCOL_VERSION => {
                 self.protocol_version = format!("{:o}.{:o}", buf[1], buf[2]);
+            },
+            ANALOG_MESSAGE...0xEF => {
+                let value = buf[1] as i32 | ((buf[2] as i32) << 7);
+                let pin = (buf[0] & 0x0F) as usize;
+                self.pins[pin+14usize as usize].value = value;
             },
             START_SYSEX => {
                 loop {
