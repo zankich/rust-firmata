@@ -3,4 +3,9 @@ serial = "0.2.0"
 [package]
 name = "firmata"
 version = "0.0.1"
+license = "MIT"
 authors = ["Adrian Zankich <adzankich@gmail.com>"]
+readme = "README.md"
+repository = "https://github.com/zankich/rust-firmata"
+homepage = "https://github.com/zankich/rust-firmata"
+description = "A client library for communicating with devices using the firmata protocol"
