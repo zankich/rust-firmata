@@ -1,0 +1,6 @@
+[dependencies]
+serial = "0.2.0"
+[package]
+name = "firmata"
+version = "0.0.1"
+authors = ["Adrian Zankich <adzankich@gmail.com>"]
