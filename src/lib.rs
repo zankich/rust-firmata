@@ -147,6 +147,18 @@ impl Board {
         write(&mut *self.sp, &mut [START_SYSEX, REPORT_FIRMWARE, END_SYSEX]).unwrap();
     }
 
+    pub fn analog_write(&mut self, pin: i32, level: i32) {
+        self.pins[pin as usize].value = level as u8;
+
+        write(&mut *self.sp,
+            &mut [
+                ANALOG_MESSAGE | pin as u8,
+                (level & 0x7f) as u8,
+                ((level >> 7) & 0x7f) as u8
+            ]
+        ).unwrap();
+    }
+
     pub fn digital_write(&mut self, pin: i32, level: i32) {
         let port = (pin as f64 / 8f64).floor() as usize;
         let mut value = 0i32;
@@ -161,7 +173,13 @@ impl Board {
             i += 1;
         }
 
-        write(&mut *self.sp, &mut [DIGITAL_MESSAGE | port as u8, (value & 0x7f) as u8, ((value >> 7) & 0x7f) as u8]).unwrap();
+        write(&mut *self.sp,
+            &mut [
+                DIGITAL_MESSAGE | port as u8,
+                (value & 0x7f) as u8,
+                ((value >> 7) & 0x7f) as u8
+            ]
+        ).unwrap();
     }
 
     pub fn set_pin_mode(&mut self, pin: i32, mode: u8) {
