@@ -13,7 +13,7 @@ Usage
 ---
 Add `firmata` to  your `Cargo.toml`
 ```
-[dependencies]                                                                                       
+[dependencies]
 firmata = "0.1.0"
 ```
 
