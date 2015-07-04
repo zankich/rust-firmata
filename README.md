@@ -14,11 +14,12 @@ Usage
 Add `firmata` to  your `Cargo.toml`
 ```
 [dependencies]
-firmata = "0.1.0"
+firmata = "0.2.0"
 ```
 
-Supported Functionality
+What works
 ---
+- I2C
 - Pwm 
 - Servo
 - Analog
