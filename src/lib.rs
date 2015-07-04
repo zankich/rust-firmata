@@ -16,6 +16,8 @@ pub const SHIFT_DATA:               u8 = 0x75;
 pub const I2C_REQUEST:              u8 = 0x76; 
 pub const I2C_REPLY:                u8 = 0x77; 
 pub const I2C_CONFIG:               u8 = 0x78; 
+pub const I2C_MODE_WRITE:           u8 = 0x00;
+pub const I2C_MODE_READ:            u8 = 0x01;
 pub const REPORT_FIRMWARE:          u8 = 0x79; 
 pub const PROTOCOL_VERSION:         u8 = 0xF9; 
 pub const SAMPLEING_INTERVAL:       u8 = 0x7A; 
@@ -81,6 +83,13 @@ fn read<T: SerialPort>(port: &mut T, len: i32) -> io::Result<(Vec<u8>)> {
 }
 
 #[derive(Debug)]
+pub struct I2CReply {
+    pub address: i32,
+    pub register: i32,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug)]
 pub struct Mode {
     pub mode: u8,
     pub resolution: u8
@@ -88,15 +97,16 @@ pub struct Mode {
 
 #[derive(Debug)]
 pub struct Pin {
-   pub  modes: Vec<Mode>,
-   pub  analog: bool,
-   pub  value: i32,
-   pub  mode: u8,
+   pub modes: Vec<Mode>,
+   pub analog: bool,
+   pub value: i32,
+   pub mode: u8,
 }
 
 pub struct Board {
     sp: Box<posix::TTYPort>,
     pub pins: Vec<Pin>,
+    pub i2c_data: Vec<I2CReply>,
     pub protocol_version: String,
     pub firmware_name: String,
     pub firmware_version: String,
@@ -122,7 +132,8 @@ impl Board {
             firmware_name: String::new(),
             firmware_version: String::new(),
             protocol_version: String::new(),
-            pins: vec![]
+            pins: vec![],
+            i2c_data: vec![],
         };
 
         b.query_firmware();
@@ -149,6 +160,50 @@ impl Board {
 
     pub fn query_firmware(&mut self) {
         write(&mut *self.sp, &mut [START_SYSEX, REPORT_FIRMWARE, END_SYSEX]).unwrap();
+    }
+
+    pub fn i2c_config(&mut self, delay: i32) {
+        write(&mut *self.sp,
+            &mut [
+                START_SYSEX,
+                I2C_CONFIG,
+                (delay & 0xFF) as u8,
+                (delay >> 8 & 0xFF) as u8,
+                END_SYSEX
+            ]
+        ).unwrap();
+    }
+
+    pub fn i2c_read(&mut self, address: i32, size: i32) {
+        write(&mut *self.sp,
+            &mut [
+                START_SYSEX,
+                I2C_REQUEST,
+                address as u8,
+                (I2C_MODE_READ << 3),
+                ((size as u8) & 0x7F),
+                (((size) >> 7) & 0x7F) as u8,
+                END_SYSEX
+            ]
+        ).unwrap();
+    }
+
+    pub fn i2c_write(&mut self, address: i32, data: &[u8]) {
+        let mut buf = vec![];
+
+        buf.push(START_SYSEX);
+        buf.push(I2C_REQUEST);
+        buf.push(address as u8);
+        buf.push(I2C_MODE_WRITE << 3);
+
+        for i in data.iter() {
+            buf.push(i & 0x7F);
+            buf.push((((*i as i32) >> 7) & 0x7F) as u8);
+        }
+
+        buf.push(END_SYSEX);
+
+        write(&mut *self.sp, &mut buf[..]).unwrap();
     }
 
     pub fn report_digital(&mut self, pin: i32, state: i32) {
@@ -289,6 +344,27 @@ impl Board {
                     REPORT_FIRMWARE => {
                         self.firmware_version = format!("{:o}.{:o}", buf[2], buf[3]);
                         self.firmware_name = str::from_utf8(&buf[4..buf.len()-1]).unwrap().to_string();
+                    },
+                    I2C_REPLY => {
+                        let len = buf.len();
+                        let mut reply = I2CReply{
+                            address:  (buf[2] as i32) | ((buf[3] as i32) << 7),
+                            register: (buf[4] as i32) | ((buf[5] as i32) << 7),
+                            data:     vec![buf[6] | buf[7]<<7],
+                        };
+                        let mut i = 8;
+
+                        while i < len-1 {
+                            if buf[i] == 0xF7 {
+                                break
+                            }
+                            if i+2 > len {
+                                break
+                            }
+                            reply.data.push(buf[i] | buf[i+1] << 7);
+                            i += 2;
+                        }
+                        self.i2c_data.push(reply);
                     },
                     _ => println!("unknown sysex code"),
                 }
