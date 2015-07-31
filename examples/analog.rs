@@ -31,7 +31,7 @@ fn main() {
 
     loop {
         b.read_and_decode();
-        println!("analog value: {:o}", b.pins[pin as usize].value);
+        println!("analog value: {}", b.pins[pin as usize].value);
         thread::sleep_ms(10);
     }
 }
