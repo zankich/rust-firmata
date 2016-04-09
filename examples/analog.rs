@@ -17,7 +17,7 @@ fn main() {
         Ok(())
     }).unwrap();
 
-    let mut b = firmata::Board::new(Box::new(sp));
+    let mut b = firmata::Board::new(Box::new(sp)).unwrap();
 
     let pin = 14; // A0
 
