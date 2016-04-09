@@ -48,7 +48,7 @@ fn main() {
         Ok(())
     }).unwrap();
 
-    let board = Arc::new(Mutex::new(firmata::Board::new(Box::new(sp))));
+    let board = Arc::new(Mutex::new(firmata::Board::new(Box::new(sp)).unwrap()));
 
     {
         let b = board.clone();

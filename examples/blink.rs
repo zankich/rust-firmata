@@ -17,7 +17,7 @@ fn main() {
         Ok(())
     }).unwrap();
 
-    let mut b = firmata::Board::new(Box::new(sp));
+    let mut b = firmata::Board::new(Box::new(sp)).unwrap();
 
     println!("firmware version {}", b.firmware_version());
     println!("firmware name {}", b.firmware_name());
