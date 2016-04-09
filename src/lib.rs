@@ -5,6 +5,7 @@ use std::io;
 use std::thread;
 use std::io::Write;
 use std::io::Read;
+use std::time::Duration;
 
 pub const ENCODER_DATA: u8 = 0x61;
 pub const ANALOG_MAPPING_QUERY: u8 = 0x69;
@@ -66,7 +67,7 @@ fn read<T: io::Read>(port: &mut T, len: i32) -> io::Result<(Vec<u8>)> {
             }
             Err(e) => {
                  if e.kind() == ErrorKind::TimedOut {
-                    thread::sleep_ms(1);
+                    thread::sleep(Duration::from_millis(1));
                     continue
                 }
             }
